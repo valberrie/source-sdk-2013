@@ -19,6 +19,10 @@
 	void UTIL_ClipPunchAngleOffset( QAngle &in, const QAngle &punch, const QAngle &clip );
 #endif
 
+#ifndef CLIENT_DLL
+	#include "ai_basenpc.h"
+#endif
+
 class CHL2MP_Player;
 
 // These are the names of the ammo types that go in the CAmmoDefs and that the 

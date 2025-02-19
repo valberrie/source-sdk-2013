@@ -642,18 +642,18 @@ void CAI_BaseNPC::Ignite( float flFlameLifetime, bool bNPCOnly, float flSize, bo
 {
 	BaseClass::Ignite( flFlameLifetime, bNPCOnly, flSize, bCalledByLevelDesigner );
 
-#ifdef HL2_EPISODIC
-	CBasePlayer *pPlayer = AI_GetSinglePlayer();
-	if ( pPlayer->IRelationType( this ) != D_LI )
-	{
-		CNPC_Alyx *alyx = CNPC_Alyx::GetAlyx();
+// #ifdef HL2_EPISODIC
+// 	CBasePlayer *pPlayer = AI_GetSinglePlayer();
+// 	if ( pPlayer->IRelationType( this ) != D_LI )
+// 	{
+// 		CNPC_Alyx *alyx = CNPC_Alyx::GetAlyx();
 
-		if ( alyx )
-		{
-			alyx->EnemyIgnited( this );
-		}
-	}
-#endif
+// 		if ( alyx )
+// 		{
+// 			alyx->EnemyIgnited( this );
+// 		}
+// 	}
+// #endif
 }
 
 //-----------------------------------------------------------------------------

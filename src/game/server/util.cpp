@@ -574,6 +574,8 @@ CBasePlayer	*UTIL_PlayerByIndex( int playerIndex )
 	return pPlayer;
 }
 
+// FIXME: this must be changed
+// vv - changed to return the listen server host in mp
 //
 // Return the local player.
 // If this is a multiplayer game, return NULL.
@@ -584,11 +586,21 @@ CBasePlayer *UTIL_GetLocalPlayer( void )
 	{
 		if ( developer.GetBool() )
 		{
-			Assert( !"UTIL_GetLocalPlayer" );
+			// Assert( !"UTIL_GetLocalPlayer" );
 			
 #ifdef	DEBUG
 			Warning( "UTIL_GetLocalPlayer() called in multiplayer game.\n" );
 #endif
+		}
+
+		CBasePlayer *p = UTIL_GetListenServerHost();
+		if(p)
+			return p;
+		
+		for(int i = 1; i < gpGlobals->maxClients; ++i) {
+			p = UTIL_PlayerByIndex(i);
+			if(p)
+				return p;
 		}
 
 		return NULL;

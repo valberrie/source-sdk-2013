@@ -1,27 +1,27 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
-//
-// Purpose: Implements a sniper rifle weapon.
-//
-//			Primary attack: fires a single high-powered shot, then reloads.
-//			Secondary attack: cycles sniper scope through zoom levels.
-//
-// TODO: Circular mask around crosshairs when zoomed in.
-// TODO: Shell ejection.
-// TODO: Finalize kickback.
-// TODO: Animated zoom effect?
-//
-//=============================================================================//
+// vv - taken from hl2dll and modified
+
+// TODO: Circular mask around crosshairs when zoomed in. [ ]
+// TODO: Shell ejection.                                 [ ]
+// TODO: Finalize kickback.                              [x]
+// TODO: Animated zoom effect?                           [ ]
 
 #include "cbase.h"
 #include "npcevent.h"
-#include "basehlcombatweapon.h"
-#include "basecombatcharacter.h"
-#include "ai_basenpc.h"
-#include "player.h"
-#include "gamerules.h"				// For g_pGameRules
 #include "in_buttons.h"
-#include "soundent.h"
-#include "vstdlib/random.h"
+// #include "soundent.h"
+
+#ifdef CLIENT_DLL
+    #include "c_hl2mp_player.h"
+#else
+    #include "hl2mp_player.h"
+	#include "ai_basenpc.h"
+#endif
+
+#include "weapon_hl2mpbasehlmpcombatweapon.h"
+
+#ifdef CLIENT_DLL
+#define CWeaponSniperRifle C_WeaponSniperRifle
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -36,79 +36,79 @@
 
 #define SNIPER_ZOOM_RATE					0.2			// Interval between zoom levels in seconds.
 
-
-//-----------------------------------------------------------------------------
-// Discrete zoom levels for the scope.
-//-----------------------------------------------------------------------------
+// zoom levels
 static int g_nZoomFOV[] =
 {
 	20,
 	5
 };
 
+extern ConVar sk_plr_dmg_sniper_round;
+extern ConVar sk_npc_dmg_sniper_round;
+extern ConVar sk_max_sniper_round;
 
-class CWeaponSniperRifle : public CBaseHLCombatWeapon
-{
-	DECLARE_DATADESC();
+class CWeaponSniperRifle : public CBaseHL2MPCombatWeapon {
 public:
-	DECLARE_CLASS( CWeaponSniperRifle, CBaseHLCombatWeapon );
+	DECLARE_CLASS( CWeaponSniperRifle, CBaseHL2MPCombatWeapon );
 
-	CWeaponSniperRifle(void);
+	CWeaponSniperRifle();
+	void PrimaryAttack();
+	bool Reload();
+	void Zoom();
+	void Precache();
+	const Vector &GetBulletSpread();
+	bool Holster(CBaseHL2MPCombatWeapon *pSwitchingTo = nullptr);
+	void ItemPostFrame();
+	virtual float GetFireRate() { return 1; };
 
-	DECLARE_SERVERCLASS();
+	DECLARE_NETWORKCLASS();
+	DECLARE_PREDICTABLE();
 
-	void Precache( void );
+#ifndef CLIENT_DLL
+	void Operator_HandleAnimEvent(animevent_t *pEvent, CBaseCombatCharacter *pOperator);
+	int CapabilitiesGet() const;
+#endif
 
-	int CapabilitiesGet( void ) const;
+    DECLARE_ACTTABLE();
 
-	const Vector &GetBulletSpread( void );
-
-	bool Holster( CBaseCombatWeapon *pSwitchingTo = NULL );
-	void ItemPostFrame( void );
-	void PrimaryAttack( void );
-	bool Reload( void );
-	void Zoom( void );
-	virtual float GetFireRate( void ) { return 1; };
-
-	void Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
-
-	DECLARE_ACTTABLE();
-
-protected:
-
-	float m_fNextZoom;
-	int m_nZoomLevel;
+private:
+    CNetworkVar(float, m_fNextZoom);
+    CNetworkVar(int, m_nZoomLevel);
+    CWeaponSniperRifle(const CWeaponSniperRifle&);
 };
 
-IMPLEMENT_SERVERCLASS_ST(CWeaponSniperRifle, DT_WeaponSniperRifle)
-END_SEND_TABLE()
+IMPLEMENT_NETWORKCLASS_ALIASED(WeaponSniperRifle, DT_WeaponSniperRifle)
 
-LINK_ENTITY_TO_CLASS( weapon_sniperrifle, CWeaponSniperRifle );
+BEGIN_NETWORK_TABLE(CWeaponSniperRifle, DT_WeaponSniperRifle)
+#ifdef CLIENT_DLL
+	RecvPropTime(RECVINFO(m_fNextZoom)),
+	RecvPropInt(RECVINFO(m_nZoomLevel)),
+#else
+	SendPropTime(SENDINFO(m_fNextZoom)),
+	SendPropInt(SENDINFO(m_nZoomLevel)),
+#endif
+END_NETWORK_TABLE()
+
+#ifdef CLIENT_DLL
+BEGIN_PREDICTION_DATA(CWeaponSniperRifle)
+	DEFINE_PRED_FIELD(m_fNextZoom, FIELD_FLOAT, FTYPEDESC_INSENDTABLE),
+	DEFINE_PRED_FIELD(m_nZoomLevel, FIELD_INTEGER, FTYPEDESC_INSENDTABLE),
+END_PREDICTION_DATA()
+#endif
+
+LINK_ENTITY_TO_CLASS(weapon_sniperrifle, CWeaponSniperRifle);
 PRECACHE_WEAPON_REGISTER(weapon_sniperrifle);
 
-BEGIN_DATADESC( CWeaponSniperRifle )
 
-	DEFINE_FIELD( m_fNextZoom, FIELD_FLOAT ),
-	DEFINE_FIELD( m_nZoomLevel, FIELD_INTEGER ),
-
-END_DATADESC()
-
-//-----------------------------------------------------------------------------
-// Maps base activities to weapons-specific ones so our characters do the right things.
-//-----------------------------------------------------------------------------
-acttable_t	CWeaponSniperRifle::m_acttable[] =
-{
-	{	ACT_RANGE_ATTACK1, ACT_RANGE_ATTACK_SNIPER_RIFLE, true }
+// #ifndef CLIENT_DLL
+acttable_t	CWeaponSniperRifle::m_acttable[] = {
+	{	ACT_RANGE_ATTACK1, ACT_RANGE_ATTACK_SNIPER_RIFLE, true },
 };
 
 IMPLEMENT_ACTTABLE(CWeaponSniperRifle);
+// #endif
 
-
-//-----------------------------------------------------------------------------
-// Purpose: Constructor.
-//-----------------------------------------------------------------------------
-CWeaponSniperRifle::CWeaponSniperRifle( void )
-{
+CWeaponSniperRifle::CWeaponSniperRifle() {
 	m_fNextZoom = gpGlobals->curtime;
 	m_nZoomLevel = 0;
 
@@ -120,22 +120,7 @@ CWeaponSniperRifle::CWeaponSniperRifle( void )
 	m_fMaxRange2		= 2048;
 }
 
-
-//-----------------------------------------------------------------------------
-// Purpose:
-// Output : int
-//-----------------------------------------------------------------------------
-int CWeaponSniperRifle::CapabilitiesGet( void ) const
-{
-	return bits_CAP_WEAPON_RANGE_ATTACK1;
-}
-
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Turns off the zoom when the rifle is holstered.
-//-----------------------------------------------------------------------------
-bool CWeaponSniperRifle::Holster( CBaseCombatWeapon *pSwitchingTo )
+bool CWeaponSniperRifle::Holster( CBaseHL2MPCombatWeapon *pSwitchingTo )
 {
 	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
 	if (pPlayer != NULL)
@@ -144,7 +129,7 @@ bool CWeaponSniperRifle::Holster( CBaseCombatWeapon *pSwitchingTo )
 		{
 			if ( pPlayer->SetFOV( this, 0 ) )
 			{
-				pPlayer->ShowViewModel(true);
+				// pPlayer->ShowViewModel(true);
 				m_nZoomLevel = 0;
 			}
 		}
@@ -294,24 +279,16 @@ bool CWeaponSniperRifle::Reload( void )
 	return false;
 }
 
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CWeaponSniperRifle::PrimaryAttack( void )
-{
+void CWeaponSniperRifle::PrimaryAttack() {
 	// Only the player fires this way so we can cast safely.
-	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
-	if (!pPlayer)
-	{
+	CBasePlayer *pPlayer = ToBasePlayer(GetOwner());
+	if (!pPlayer) {
 		return;
 	}
 
-	if ( gpGlobals->curtime >= m_flNextPrimaryAttack )
-	{
+	if ( gpGlobals->curtime >= m_flNextPrimaryAttack ) {
 		// If my clip is empty (and I use clips) start reload
-		if ( !m_iClip1 )
-		{
+		if ( !m_iClip1 ) {
 			Reload();
 			return;
 		}
@@ -334,22 +311,29 @@ void CWeaponSniperRifle::PrimaryAttack( void )
 		Vector vecAiming = pPlayer->GetAutoaimVector( AUTOAIM_5DEGREES );
 
 		// Fire the bullets
-		pPlayer->FireBullets( SNIPER_BULLET_COUNT_PLAYER, vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, SNIPER_TRACER_FREQUENCY_PLAYER );
+		FireBulletsInfo_t info( 1, vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType );
+		info.m_pAttacker = pPlayer;
+		pPlayer->FireBullets(info);
+		// pPlayer->FireBullets( SNIPER_BULLET_COUNT_PLAYER, vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, SNIPER_TRACER_FREQUENCY_PLAYER );
 
-		CSoundEnt::InsertSound( SOUND_COMBAT, GetAbsOrigin(), 600, 0.2 );
+		// CSoundEnt::InsertSound( SOUND_COMBAT, GetAbsOrigin(), 600, 0.2 );
 
-		QAngle vecPunch(random->RandomFloat( -SNIPER_KICKBACK, SNIPER_KICKBACK ), 0, 0);
+// #ifndef CLIENT_DLL
+// 		pPlayer->SnapEyeAngles( angles );
+// #endif
+
+		QAngle vecPunch(random->RandomFloat( -SNIPER_KICKBACK, -SNIPER_KICKBACK - SNIPER_KICKBACK ), random->RandomFloat(-SNIPER_KICKBACK / 2, SNIPER_KICKBACK / 2), 0);
 		pPlayer->ViewPunch(vecPunch);
 
 		// Indicate out of ammo condition if we run out of ammo.
-		if (!m_iClip1 && pPlayer->GetAmmoCount(m_iPrimaryAmmoType) <= 0)
-		{
+		if (!m_iClip1 && pPlayer->GetAmmoCount(m_iPrimaryAmmoType) <= 0) {
 			pPlayer->SetSuitUpdate("!HEV_AMO0", FALSE, 0);
 		}
 	}
 
+	// vv - no ai
 	// Register a muzzleflash for the AI.
-	pPlayer->SetMuzzleFlashTime( gpGlobals->curtime + 0.5 );
+	// pPlayer->SetMuzzleFlashTime( gpGlobals->curtime + 0.5 );
 }
 
 
@@ -368,7 +352,7 @@ void CWeaponSniperRifle::Zoom( void )
 	{
 		if ( pPlayer->SetFOV( this, 0 ) )
 		{
-			pPlayer->ShowViewModel(true);
+			// pPlayer->ShowViewModel(true);
 
 			// Zoom out to the default zoom level
 			WeaponSound(SPECIAL2);
@@ -379,10 +363,10 @@ void CWeaponSniperRifle::Zoom( void )
 	{
 		if ( pPlayer->SetFOV( this, g_nZoomFOV[m_nZoomLevel] ) )
 		{
-			if (m_nZoomLevel == 0)
-			{
-				pPlayer->ShowViewModel(false);
-			}
+			// if (m_nZoomLevel == 0)
+			// {
+			// 	pPlayer->ShowViewModel(false);
+			// }
 
 			WeaponSound(SPECIAL1);
 
@@ -394,22 +378,13 @@ void CWeaponSniperRifle::Zoom( void )
 }
 
 
-//-----------------------------------------------------------------------------
-// Purpose:
-// Output : virtual const Vector&
-//-----------------------------------------------------------------------------
-const Vector &CWeaponSniperRifle::GetBulletSpread( void )
+const Vector &CWeaponSniperRifle::GetBulletSpread()
 {
 	static Vector cone = SNIPER_CONE_PLAYER;
 	return cone;
 }
 
-
-//-----------------------------------------------------------------------------
-// Purpose:
-// Input  : *pEvent -
-//			*pOperator -
-//-----------------------------------------------------------------------------
+#ifndef CLIENT_DLL
 void CWeaponSniperRifle::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator )
 {
 	switch ( pEvent->event )
@@ -445,3 +420,7 @@ void CWeaponSniperRifle::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCom
 	}
 }
 
+int CWeaponSniperRifle::CapabilitiesGet() const {
+	return bits_CAP_WEAPON_RANGE_ATTACK1;
+}
+#endif

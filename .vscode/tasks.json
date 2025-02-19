@@ -1,0 +1,21 @@
+{
+    "tasks": [
+        {
+            "type":"cppbuild",
+            "label": "build",
+            "command": "/usr/bin/bash",
+            "args": [
+                "${workspaceFolder}/src/buildallprojects",
+                "debug"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        }
+    ],
+    "version": "2.0.0"
+}

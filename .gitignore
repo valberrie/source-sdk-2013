@@ -502,3 +502,18 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+.zed/
+game/*
+src/lib/
+!game/bin/linux64/libsteam_api.so
+!game/bin/x64/libsteam_api.so
+!game/thirdpartylegalnotices.txt
+!game/run_hl2mp.sh
+!game/mod_hl2mp/gameinfo.txt
+!game/mod_hl2mp/cfg/*
+!game/mod_hl2mp/scripts/*
+steam_appid.txt
+.ninja_deps
+.ninja_log
+compile_commands.json

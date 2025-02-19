@@ -26,6 +26,15 @@
 #define CWeaponPistol C_WeaponPistol
 #endif
 
+ConVar sk_weapon_pistol_recoil_min_x( "sk_weapon_pistol_recoil_min_x", "-2.2", FCVAR_CHEAT );
+ConVar sk_weapon_pistol_recoil_max_x( "sk_weapon_pistol_recoil_max_x", "-1.1", FCVAR_CHEAT );
+ConVar sk_weapon_pistol_recoil_min_y( "sk_weapon_pistol_recoil_min_y", "-0.9", FCVAR_CHEAT );
+ConVar sk_weapon_pistol_recoil_max_y( "sk_weapon_pistol_recoil_max_y", "0.9", FCVAR_CHEAT );
+
+// extern ConVar sk_plr_dmg_pistol;
+// extern ConVar sk_npc_dmg_pistol;
+// extern ConVar sk_max_pistol;
+
 //-----------------------------------------------------------------------------
 // CWeaponPistol
 //-----------------------------------------------------------------------------
@@ -53,6 +62,10 @@ public:
 	Activity	GetPrimaryAttackActivity( void );
 
 	virtual bool Reload( void );
+
+	#ifndef CLIENT_DLL
+	void Operator_HandleAnimEvent(animevent_t *pEvent, CBaseCombatCharacter *pOperator);
+	#endif
 
 	virtual const Vector& GetBulletSpread( void )
 	{		
@@ -85,9 +98,9 @@ public:
 		return 0.5f; 
 	}
 	
-#ifndef CLIENT_DLL
+// #ifndef CLIENT_DLL
 	DECLARE_ACTTABLE();
-#endif
+// #endif
 
 private:
 	CNetworkVar( float,	m_flSoonestPrimaryAttack );
@@ -127,7 +140,7 @@ END_PREDICTION_DATA()
 LINK_ENTITY_TO_CLASS( weapon_pistol, CWeaponPistol );
 PRECACHE_WEAPON_REGISTER( weapon_pistol );
 
-#ifndef CLIENT_DLL
+// #ifndef CLIENT_DLL
 acttable_t CWeaponPistol::m_acttable[] = 
 {
 	{ ACT_HL2MP_IDLE,					ACT_HL2MP_IDLE_PISTOL,					false },
@@ -143,7 +156,7 @@ acttable_t CWeaponPistol::m_acttable[] =
 
 IMPLEMENT_ACTTABLE( CWeaponPistol );
 
-#endif
+// #endif
 
 //-----------------------------------------------------------------------------
 // Purpose: Constructor
@@ -201,14 +214,15 @@ void CWeaponPistol::PrimaryAttack( void )
 
 	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
 
-	if( pOwner )
-	{
-		// Each time the player fires the pistol, reset the view punch. This prevents
-		// the aim from 'drifting off' when the player fires very quickly. This may
-		// not be the ideal way to achieve this, but it's cheap and it works, which is
-		// great for a feature we're evaluating. (sjb)
-		pOwner->ViewPunchReset();
-	}
+	// if( pOwner )
+	// {
+	// 	// Each time the player fires the pistol, reset the view punch. This prevents
+	// 	// the aim from 'drifting off' when the player fires very quickly. This may
+	// 	// not be the ideal way to achieve this, but it's cheap and it works, which is
+	// 	// great for a feature we're evaluating. (sjb)
+	// 	pOwner->ViewPunchReset();
+	// }
+	// vv - nah i don't want that
 
 	BaseClass::PrimaryAttack();
 
@@ -330,10 +344,47 @@ void CWeaponPistol::AddViewKick( void )
 
 	QAngle	viewPunch;
 
-	viewPunch.x = SharedRandomFloat( "pistolpax", 0.25f, 0.5f );
-	viewPunch.y = SharedRandomFloat( "pistolpay", -.6f, .6f );
+	const float minX = sk_weapon_pistol_recoil_min_x.GetFloat();
+	const float maxX = sk_weapon_pistol_recoil_max_x.GetFloat();
+	const float minY = sk_weapon_pistol_recoil_min_y.GetFloat();
+	const float maxY = sk_weapon_pistol_recoil_max_y.GetFloat();
+
+	viewPunch.x = SharedRandomFloat( "pistolpax", minX, maxX );
+	viewPunch.y = SharedRandomFloat( "pistolpay", minY, maxY );
 	viewPunch.z = 0.0f;
 
 	//Add it to the view punch
 	pPlayer->ViewPunch( viewPunch );
 }
+
+#ifndef CLIENT_DLL
+
+void CWeaponPistol::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator )
+{
+	switch( pEvent->event )
+	{
+		case EVENT_WEAPON_PISTOL_FIRE:
+		{
+			Vector vecShootOrigin, vecShootDir;
+			vecShootOrigin = pOperator->Weapon_ShootPosition();
+
+			CAI_BaseNPC *npc = pOperator->MyNPCPointer();
+			ASSERT( npc != NULL );
+
+			vecShootDir = npc->GetActualShootTrajectory( vecShootOrigin );
+
+			CSoundEnt::InsertSound( SOUND_COMBAT|SOUND_CONTEXT_GUNFIRE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_PISTOL, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy() );
+
+			WeaponSound( SINGLE_NPC );
+			pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2 );
+			pOperator->DoMuzzleFlash();
+			m_iClip1 = m_iClip1 - 1;
+		}
+		break;
+		default:
+			BaseClass::Operator_HandleAnimEvent( pEvent, pOperator );
+			break;
+	}
+}
+
+#endif

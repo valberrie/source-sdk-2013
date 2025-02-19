@@ -30,6 +30,9 @@ ConVar sk_weapon_ar2_alt_fire_duration( "sk_weapon_ar2_alt_fire_duration", "4" )
 ConVar sk_weapon_ar2_alt_fire_mass( "sk_weapon_ar2_alt_fire_mass", "150" );
 #endif
 
+ConVar sk_weapon_ar2_recoil_max_deg( "sk_weapon_ar2_recoil_max_deg", "8.0", FCVAR_CHEAT );
+ConVar sk_weapon_ar2_recoil_time_sec( "sk_weapon_ar2_recoil_time_sec", "5.0", FCVAR_CHEAT );
+
 //=========================================================
 //=========================================================
 
@@ -296,14 +299,13 @@ bool CWeaponAR2::Reload( void )
 	return BaseClass::Reload();
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
 void CWeaponAR2::AddViewKick( void )
 {
-	#define	EASY_DAMPEN			0.5f
-	#define	MAX_VERTICAL_KICK	8.0f	//Degrees
-	#define	SLIDE_LIMIT			5.0f	//Seconds
+	// #define	EASY_DAMPEN			0.5f
+	// #define	MAX_VERTICAL_KICK	8.0f	//Degrees
+	// #define	SLIDE_LIMIT			5.0f	//Seconds
+	const float max_vertical_kick = sk_weapon_ar2_recoil_max_deg.GetFloat();
+	const float slide_limit = sk_weapon_ar2_recoil_time_sec.GetFloat();
 	
 	//Get the view kick
 	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
@@ -311,7 +313,7 @@ void CWeaponAR2::AddViewKick( void )
 	if (!pPlayer)
 		return;
 
-	DoMachineGunKick( pPlayer, EASY_DAMPEN, MAX_VERTICAL_KICK, m_fFireDuration, SLIDE_LIMIT );
+	DoMachineGunKick( pPlayer, 0, max_vertical_kick, m_fFireDuration, slide_limit );
 }
 
 //-----------------------------------------------------------------------------

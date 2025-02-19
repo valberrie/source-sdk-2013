@@ -137,6 +137,10 @@ void CHL2MPMachineGun::FireBullets( const FireBulletsInfo_t &info )
 //-----------------------------------------------------------------------------
 void CHL2MPMachineGun::DoMachineGunKick( CBasePlayer *pPlayer, float dampEasy, float maxVerticleKickAngle, float fireDurationTime, float slideLimitTime )
 {
+	// vv - TODO: remove easydamp, adjust machinegun weapons for new recoil
+	//    |- [x] SMG1
+	//	  |- [ ] AR3
+
 	#define	KICK_MIN_X			0.2f	//Degrees
 	#define	KICK_MIN_Y			0.2f	//Degrees
 	#define	KICK_MIN_Z			0.1f	//Degrees
@@ -149,7 +153,9 @@ void CHL2MPMachineGun::DoMachineGunKick( CBasePlayer *pPlayer, float dampEasy, f
 	float kickPerc = duration / slideLimitTime;
 
 	// do this to get a hard discontinuity, clear out anything under 10 degrees punch
-	pPlayer->ViewPunchReset( 10 );
+
+	// vv - disable
+	// pPlayer->ViewPunchReset( 10 );
 
 	//Apply this to the view angles as well
 	vecScratch.x = -( KICK_MIN_X + ( maxVerticleKickAngle * kickPerc ) );
@@ -168,12 +174,15 @@ void CHL2MPMachineGun::DoMachineGunKick( CBasePlayer *pPlayer, float dampEasy, f
 	if ( RandomInt( -1, 1 ) >= 0 )
 		vecScratch.z *= -1;
 
+	// vv - don't clip
 	//Clip this to our desired min/max
-	UTIL_ClipPunchAngleOffset( vecScratch, pPlayer->m_Local.m_vecPunchAngle, QAngle( 24.0f, 3.0f, 1.0f ) );
+	// UTIL_ClipPunchAngleOffset( vecScratch, pPlayer->m_Local.m_vecPunchAngle, QAngle( 24.0f, 3.0f, 1.0f ) );
 
 	//Add it to the view punch
 	// NOTE: 0.5 is just tuned to match the old effect before the punch became simulated
-	pPlayer->ViewPunch( vecScratch * 0.5 );
+
+	// vv - removed 0.5 mul
+	pPlayer->ViewPunch( vecScratch );
 }
 
 //-----------------------------------------------------------------------------

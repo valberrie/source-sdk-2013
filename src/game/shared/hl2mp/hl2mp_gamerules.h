@@ -136,6 +136,8 @@ public:
 	void    CheckChatForReadySignal( CHL2MP_Player *pPlayer, const char *chatmsg );
 	const char *GetChatFormat( bool bTeamOnly, CBasePlayer *pPlayer );
 
+	// vv - allow for ai in mp
+	void InitDefaultAIRelationships();
 #endif
 
 	bool IsOfficialMap( void );

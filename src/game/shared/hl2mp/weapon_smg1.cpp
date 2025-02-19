@@ -29,6 +29,9 @@
 #define SMG1_GRENADE_DAMAGE 100.0f
 #define SMG1_GRENADE_RADIUS 250.0f
 
+ConVar recoil_max("sk_weapon_smg1_recoil_max_deg", "2.5", FCVAR_CHEAT );
+ConVar recoil_sec("sk_weapon_smg1_recoil_time_sec", "2.75", FCVAR_CHEAT );
+
 class CWeaponSMG1 : public CHL2MPMachineGun
 {
 public:
@@ -61,9 +64,9 @@ public:
 
 	const WeaponProficiencyInfo_t *GetProficiencyValues();
 
-#ifndef CLIENT_DLL
+// #ifndef CLIENT_DLL
 	DECLARE_ACTTABLE();
-#endif
+// #endif
 
 protected:
 
@@ -85,7 +88,7 @@ END_PREDICTION_DATA()
 LINK_ENTITY_TO_CLASS( weapon_smg1, CWeaponSMG1 );
 PRECACHE_WEAPON_REGISTER(weapon_smg1);
 
-#ifndef CLIENT_DLL
+// #ifndef CLIENT_DLL
 acttable_t	CWeaponSMG1::m_acttable[] = 
 {
 	{ ACT_HL2MP_IDLE,					ACT_HL2MP_IDLE_SMG1,					false },
@@ -99,7 +102,7 @@ acttable_t	CWeaponSMG1::m_acttable[] =
 };
 
 IMPLEMENT_ACTTABLE(CWeaponSMG1);
-#endif
+// #endif
 
 //=========================================================
 CWeaponSMG1::CWeaponSMG1( )
@@ -174,9 +177,11 @@ bool CWeaponSMG1::Reload( void )
 //-----------------------------------------------------------------------------
 void CWeaponSMG1::AddViewKick( void )
 {
-	#define	EASY_DAMPEN			0.5f
-	#define	MAX_VERTICAL_KICK	1.0f	//Degrees
-	#define	SLIDE_LIMIT			2.0f	//Seconds
+	// #define	EASY_DAMPEN			0.5f
+	// #define	MAX_VERTICAL_KICK	2.5f	//Degrees
+	// #define	SLIDE_LIMIT			2.75f	//Seconds
+	const float max_kick = recoil_max.GetFloat();
+	const float slide_limit = recoil_sec.GetFloat();
 	
 	//Get the view kick
 	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
@@ -184,7 +189,7 @@ void CWeaponSMG1::AddViewKick( void )
 	if ( pPlayer == NULL )
 		return;
 
-	DoMachineGunKick( pPlayer, EASY_DAMPEN, MAX_VERTICAL_KICK, m_fFireDuration, SLIDE_LIMIT );
+	DoMachineGunKick( pPlayer, 0, max_kick, m_fFireDuration, slide_limit );
 }
 
 //-----------------------------------------------------------------------------
